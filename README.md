@@ -20,3 +20,9 @@ To run the command you will need 4 pieces of information from your Apple develop
  - The Vendor ID 
  
     https://appstoreconnect.apple.com/itc/payments_and_financial_reports#/
+
+Final note: 
+    
+    The JWT code was borrowed from here
+    
+    https://gist.github.com/Gorniv/a593037dd79184f952781077fe568ce3
