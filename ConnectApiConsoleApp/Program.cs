@@ -1,6 +1,7 @@
 ﻿using System;
 using System.CommandLine;
 using System.CommandLine.Invocation;
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.IO;
 using System.Security.Cryptography;
@@ -27,7 +28,8 @@ namespace ConnectApiConsoleApp
                 new Option<string>("-key","[REQUIRED] path to P8 key file"),
                 new Option<string>("-kid","[REQUIRED] Key ID for the P8 file "),
                 new Option<string>("-iss","[REQUIRED] Your Issuer ID (https://appstoreconnect.apple.com/access/api)"),
-                new Option<string>("-ven","[REQUIRED] Your Vendor ID (https://appstoreconnect.apple.com/itc/payments_and_financial_reports)")
+                new Option<string>("-ven","[REQUIRED] Your Vendor ID (https://appstoreconnect.apple.com/itc/payments_and_financial_reports)"),
+                new Option<string>("-date", "Optional date in YYYY-MM-DD format"){ IsRequired = false}
             };
 
 
@@ -37,9 +39,9 @@ namespace ConnectApiConsoleApp
                 "Developer account.";
 
                
-            rootCommand.Handler = CommandHandler.Create(async (string key, string kid, string iss, string ven) =>
+            rootCommand.Handler = CommandHandler.Create(async (string key, string kid, string iss, string ven, string date) =>
             {              
-                await Run(key, kid, iss, ven);
+                await Run(key, kid, iss, ven, date);
             });
 
             await rootCommand.InvokeAsync(args);
@@ -48,18 +50,26 @@ namespace ConnectApiConsoleApp
 
 
 
-        static async Task Run(string keyFile, string keyId, string issuerId, string vendor)
+        static async Task Run(string keyFile, string keyId, string issuerId, string vendor, string date)
         {
+           
             if (!File.Exists(keyFile))
             {
                 Console.WriteLine($"Keyfile {keyFile} does not exist");
                 return;
             }
+
+            var valid = DateTime.TryParseExact(date, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.None, out var dt);
+            if(!valid || dt == default(DateTime)){
+                Console.WriteLine($"Date {date} is not valid");
+                return;
+            }
+           
             var key = File.ReadAllText(keyFile);
             var bearerToken = GenerateToken(keyId,issuerId, key);          
             var client = new ConnectApiClient(bearerToken, vendor);
 
-            var (isOk, records, errMessage) = await client.GetDailyReport(null);
+            var (isOk, records, errMessage) = await client.GetDailyReport(dt);
 
             if (isOk)
             {
@@ -116,8 +126,4 @@ namespace ConnectApiConsoleApp
         }
     }
 }
-
-
-//https://api.appstoreconnect.apple.com/v1/apps
-//https://api.appstoreconnect.apple.com/v1/salesReports?filter[frequency]=WEEKLY&filter[reportSubType]=SUMMARY&filter[reportType]=SALES&filter[vendorNumber]=87790970&filter[reportDate]=2020-08-16", bearerToken);
 
